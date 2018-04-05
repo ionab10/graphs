@@ -3,22 +3,60 @@ import networkx as nx
 from itertools import combinations
 import seaborn as sns
 import matplotlib.pyplot as plt
+from operator import or_
+from functools import reduce
 
 
-def get_available_colour(G, n, all_cols, allow_conflicts=False):
+def exceeds_max(G, day, maximum):
+    if maximum:
+        classes_for_day=[n for n in G.nodes() if G.node[n]['col']==day]
+        try:
+            return len(reduce(or_, [G.node[c]['students'] for c in classes_for_day])) > maximum
+        except:
+            return False
+    else:
+        return False
+        
+def get_available_colour(G, n, all_cols, allow_conflicts=False, max_students=None):
     unavailable={G.node[n]['col'] for n in G.neighbors(n)}
-    try:
-        return sorted(set(all_cols) - unavailable)[0]
-    except:
-        if allow_conflicts:
-            return 0
-        else:
-            return -1
+    available=sorted(set(all_cols) - unavailable)
+    for day in available:
+        if not exceeds_max(G, day, max_students):
+            return day
 
-def try_coloring(G, num_colours=None, allow_conflicts=False):
+    if allow_conflicts:
+        G.node[n]['clash']=True
+        clashes=sorted(clashes_per_day(G).items(), key=lambda x: x[1])
+        for day,n_clashes in clashes:
+            if not exceeds_max(G, day, max_students):
+                return day
+
+        raise ValueError('Too many students')
+    else:
+        raise ValueError('Too many students or not enough days')
+        
+def clashes_per_day(G):
+    n_clashes={}
+    for n in G.nodes():
+        if G.node[n]['col']==-1:
+            continue
+        elif G.node[n]['clash']:
+            try: 
+                n_clashes[G.node[n]['col']]+=G.node[n]['size']
+            except:
+                n_clashes[G.node[n]['col']]=G.node[n]['size']
+        else:
+            try: 
+                n_clashes[G.node[n]['col']]+=0
+            except:
+                n_clashes[G.node[n]['col']]=0
+    return n_clashes
+
+def try_coloring(G, num_colours=None, allow_conflicts=False, order='size', max_students=None):
     #set all nodes to -1
     for n in G.nodes():
         G.node[n]['col']=-1
+        G.node[n]['clash']=False
         
     #available colours/days
     if num_colours:
@@ -27,9 +65,9 @@ def try_coloring(G, num_colours=None, allow_conflicts=False):
         colours=list(range(len(G.nodes())))
     
     #for each node colour with the first available colour
-    for n in G.nodes():
+    for n,size in sorted(nx.get_node_attributes(G,order).items(), key=lambda x: x[1], reverse=True):
         if G.node[n]['col']==-1:
-            G.node[n]['col']=get_available_colour(G, n, colours, allow_conflicts=allow_conflicts)
+            G.node[n]['col']=get_available_colour(G, n, colours, allow_conflicts=allow_conflicts, max_students=max_students)
 
     return G
 
@@ -57,14 +95,21 @@ for x in combinations(subjects, 2):
     if len(class_dict[class1] & class_dict[class2])>0:
         G.add_edge(class1,class2)    #edge if two classes has a common student
 
+for n in G.nodes():
+    G.node[n]['size']=len(class_dict[n])
+    G.node[n]['students']=class_dict[n]
 
 #colouring with no restriction on number of days
 print("Non-restrictive colouring: ",nx.coloring.greedy_color(G))
 
-G=try_coloring(G,3, allow_conflicts=True)
+G=try_coloring(G, num_colours=3, allow_conflicts=True, max_students=3)
 cols=nx.get_node_attributes(G,'col')
 
 print("Restrictive colouring (max 3 colours): ",cols)
+
+with open('schedule.txt','w') as f:
+    for i in range(3):
+        f.write('Day {}: '.format(i) + ', '.join([x[0] for x in cols.items() if x[1]==i]) + '\n')
 
 #draw graph (different colour for different days)
 nx.draw(G, with_labels=True, node_color=[cols[n] for n in G.nodes()], cmap=plt.cm.Blues)
