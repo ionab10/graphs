@@ -1,0 +1,70 @@
+import pandas as pd
+import networkx as nx
+from itertools import combinations
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+
+def get_available_colour(G, n, all_cols, allow_conflicts=False):
+    unavailable={G.node[n]['col'] for n in G.neighbors(n)}
+    try:
+        return sorted(set(all_cols) - unavailable)[0]
+    except:
+        if allow_conflicts:
+            return 0
+        else:
+            return -1
+
+def try_coloring(G, num_colours=None, allow_conflicts=False):
+    #set all nodes to -1
+    for n in G.nodes():
+        G.node[n]['col']=-1
+        
+    #available colours/days
+    if num_colours:
+        colours=list(range(num_colours))
+    else:
+        colours=list(range(len(G.nodes())))
+    
+    #for each node colour with the first available colour
+    for n in G.nodes():
+        if G.node[n]['col']==-1:
+            G.node[n]['col']=get_available_colour(G, n, colours, allow_conflicts=allow_conflicts)
+
+    return G
+
+#read in data as table
+df=pd.read_csv('data.csv')
+
+#get list of subjects
+subjects=list(set(df['Subj']))
+
+# create dictionary of students in each subject (ex. {PHY: {1234, 1235, 1236}})
+class_dict={}
+for subject in subjects:
+    class_dict[subject]=set(df.query("Subj == '{}'".format(subject))['No.'])
+
+#Create graph
+G=nx.Graph()
+G.add_nodes_from(subjects)  #vertices are subjects
+
+#for each pair of classes, check if there is a student in both
+for x in combinations(subjects, 2):
+    class1=x[0]
+    class2=x[1]
+    # if the intersection of the set of students in class1 and the set of students in class2 is not empty 
+    #(ie there is at least one student in both classes)...
+    if len(class_dict[class1] & class_dict[class2])>0:
+        G.add_edge(class1,class2)    #edge if two classes has a common student
+
+
+#colouring with no restriction on number of days
+print("Non-restrictive colouring: ",nx.coloring.greedy_color(G))
+
+G=try_coloring(G,3, allow_conflicts=True)
+cols=nx.get_node_attributes(G,'col')
+
+print("Restrictive colouring (max 3 colours): ",cols)
+
+#draw graph (different colour for different days)
+nx.draw(G, with_labels=True, node_color=[cols[n] for n in G.nodes()], cmap=plt.cm.Blues)
