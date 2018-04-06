@@ -3,7 +3,7 @@ import networkx as nx
 from itertools import combinations
 import seaborn as sns
 import matplotlib.pyplot as plt
-from operator import or_
+from operator import or_, and_
 from functools import reduce
 import json
 import numpy as np
@@ -44,6 +44,9 @@ def get_available_colour(G, n, all_cols, allow_conflicts=False, max_students=Non
         clashes=sorted(clashes_per_day(G).items(), key=lambda x: x[1])
         for day,n_clashes in clashes:
             if not exceeds_max(G, day, max_students):
+                for nb in G.neighbors(n):
+                    if G.node[nb]['col']==day:
+                        G.node[nb]['clash']=True
                 return day
 
         raise ValueError('Too many students')
@@ -127,12 +130,17 @@ with open('schedule.txt','w') as f:
     for i in range(num_colours):
         f.write('Day {}: '.format(i) + ', '.join([x[0] for x in cols.items() if x[1]==i]) + '\n')
         
-        
-clashes=nx.get_node_attributes(G,'clash')
+class_df=pd.DataFrame.from_dict(dict(G.nodes(data=True)), orient='index')
+
 with open('clashes.txt','w') as f:
-    for n in G.nodes():
-        if G.node[n]['clash']:
-            f.write(n+'\t'+', '.join([str(x) for x in G.node[n]['students']])+'\n')
+    
+    for day in set(class_df.col):
+        temp=class_df.query("col=={} & clash==True".format(day))
+        try:
+            clashing_students=reduce(and_, temp.students)
+        except:
+            clashing_students={}
+        f.write('Day {}: '.format(day) + str(list(temp.index)) + '\t' + ', '.join([str(x) for x in clashing_students]) + '\n')
             
 with open('G.json', 'w') as f:
     json.dump(dict(G.nodes(data=True)), f, cls=MyEncoder, indent=4, sort_keys=True)
