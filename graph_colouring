@@ -5,7 +5,22 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from operator import or_
 from functools import reduce
+import json
+import numpy as np
 
+
+class MyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif type(obj)==set:
+            return list(obj)
+        else:
+            return super(MyEncoder, self).default(obj)
 
 def exceeds_max(G, day, maximum):
     if maximum:
@@ -100,16 +115,27 @@ for n in G.nodes():
     G.node[n]['students']=class_dict[n]
 
 #colouring with no restriction on number of days
-print("Non-restrictive colouring: ",nx.coloring.greedy_color(G))
+#print("Non-restrictive colouring: ",nx.coloring.greedy_color(G))
 
-G=try_coloring(G, num_colours=3, allow_conflicts=True, max_students=3)
+num_colours=3
+max_students=3
+
+G=try_coloring(G, num_colours=num_colours, allow_conflicts=True, max_students=max_students)
 cols=nx.get_node_attributes(G,'col')
 
-print("Restrictive colouring (max 3 colours): ",cols)
-
 with open('schedule.txt','w') as f:
-    for i in range(3):
+    for i in range(num_colours):
         f.write('Day {}: '.format(i) + ', '.join([x[0] for x in cols.items() if x[1]==i]) + '\n')
+        
+        
+clashes=nx.get_node_attributes(G,'clash')
+with open('clashes.txt','w') as f:
+    for n in G.nodes():
+        if G.node[n]['clash']:
+            f.write(n+'\t'+', '.join([str(x) for x in G.node[n]['students']])+'\n')
+            
+with open('G.json', 'w') as f:
+    json.dump(dict(G.nodes(data=True)), f, cls=MyEncoder, indent=4, sort_keys=True)
 
 #draw graph (different colour for different days)
 nx.draw(G, with_labels=True, node_color=[cols[n] for n in G.nodes()], cmap=plt.cm.Blues)
