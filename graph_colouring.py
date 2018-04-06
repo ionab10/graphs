@@ -8,6 +8,16 @@ from functools import reduce
 import json
 import numpy as np
 
+def pairwise_and(sets):
+    temp=set()
+    duplicates=set()
+    for s in sets:
+        for x in s:
+            if x not in temp:
+                temp.add(x)
+            else:
+                duplicates.add(x)
+    return duplicates
 
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -136,10 +146,7 @@ with open('clashes.txt','w') as f:
     
     for day in set(class_df.col):
         temp=class_df.query("col=={} & clash==True".format(day))
-        try:
-            clashing_students=reduce(and_, temp.students)
-        except:
-            clashing_students={}
+        clashing_students=pairwise_and(list(temp.students))
         f.write('Day {}: '.format(day) + str(list(temp.index)) + '\t' + ', '.join([str(x) for x in clashing_students]) + '\n')
             
 with open('G.json', 'w') as f:
