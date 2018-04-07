@@ -130,10 +130,10 @@ G.add_nodes_from(subjects)  #vertices are subjects
 for x in combinations(subjects, 2):
     class1=x[0]
     class2=x[1]
-    # if the intersection of the set of students in class1 and the set of students in class2 is not empty 
-    #(ie there is at least one student in both classes)...
-    if len(class_dict[class1] & class_dict[class2])>0:
-        G.add_edge(class1,class2)    #edge if two classes has a common student
+  
+    overlap=class_dict[class1].intersection(class_dict[class2]) #set of students in both classes
+    if len(overlap)>0:  # if the intersection of the set of students in class1 and the set of students in class2 is not empty 
+        G.add_edge(class1,class2, weight= len(overlap))    #edge if two classes has a common student, weight=size of student overlap
 
 for n in G.nodes():
     G.node[n]['size']=len(class_dict[n])
