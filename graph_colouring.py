@@ -82,15 +82,13 @@ def clashes_per_day(G):
     for n in G.nodes():
         if G.node[n]['col']==-1:
             continue
-        elif G.node[n]['clash']:
-            try: 
-                n_clashes[G.node[n]['col']]=n_clashes[G.node[n]['col']].union(G.node[n]['students'])
-            except:
-                n_clashes[G.node[n]['col']]=G.node[n]['students']
-        elif G.node[n]['col'] not in n_clashes.keys():
-            n_clashes[G.node[n]['col']]=set()   
+        else:
+            if G.node[n]['col'] not in n_clashes.keys():
+                n_clashes[G.node[n]['col']]=[]
+            n_clashes[G.node[n]['col']] = n_clashes[G.node[n]['col']] + [G.node[n]['students']]
         
-    n_clashes=dict([(k,len(v)) for k,v in n_clashes.items()])
+    n_clashes=dict([(k,len(pairwise_and(v))) for k,v in n_clashes.items()])
+    
     return n_clashes
 
 #main colouring algorithm
