@@ -160,12 +160,15 @@ class_df=pd.DataFrame.from_dict(dict(G.nodes(data=True)), orient='index')
 with open('schedule.txt','w') as f:
     for i in range(num_colours):
         temp=class_df.query("col=={}".format(i))
-        n_students=len(reduce(or_, list(temp.students)))
-        try:
-            classes=["{} ({})".format(ix, x) for ix,x in temp['size'].iteritems()]
-        except:
-            classes=["{} ({})".format(temp.index, temp.size)]
-        f.write('Day {} ({}): '.format(i, n_students) + ', '.join(classes) + '\n')
+        if len(temp):
+            n_students=len(reduce(or_, list(temp.students)))
+            try:
+                classes=["{} ({})".format(ix, x) for ix,x in temp['size'].iteritems()]
+            except:
+                classes=["{} ({})".format(temp.index, temp.size)]
+            f.write('Day {} ({}): '.format(i, n_students) + ', '.join(classes) + '\n')
+        else:
+            f.write('Day {} ({}): '.format(i, 0) + 'No students\n')
         
 
 #classes with conflicts and students with conflicts on each day
